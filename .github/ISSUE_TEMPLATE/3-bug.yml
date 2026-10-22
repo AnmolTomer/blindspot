@@ -1,0 +1,22 @@
+name: Bug
+description: Something didn't work
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you expected, and what you saw instead.
+    validations:
+      required: true
+  - type: input
+    id: system
+    attributes:
+      label: Your setup
+      description: macOS or Linux version, terminal app, and the output of `bash --version | head -1`.
+  - type: textarea
+    id: output
+    attributes:
+      label: Output
+      description: The script never prints keys, but file paths can name your projects. Check before you paste.
+      render: text

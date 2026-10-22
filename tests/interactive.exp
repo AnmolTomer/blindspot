@@ -1,0 +1,56 @@
+# Used by tests/interactive.sh. Each expect block spans several lines on purpose:
+# expect only reads a braced block as pattern/action pairs when it starts with a
+# newline. Written on one line, the whole block becomes a single literal pattern.
+set timeout 60
+log_user 0
+match_max 100000
+cd $env(SAVEDIR)
+spawn -noecho env HOME=$env(FAKEHOME) TERM=xterm-256color GIRD_CHECK_MIN_SECONDS=8 GIRD_CHECK_NO_OPEN=1 $env(BASHBIN) $env(SCRIPT) --offline
+stty rows 50 columns 90 < $spawn_out(slave,name)
+proc pass {msg} { puts "  ok    $msg" }
+proc fail {msg} { puts "  FAIL  $msg"; exit 1 }
+expect {
+  "Press SPACE to jump" { pass "offers the game while it scans" }
+  timeout { fail "no game" }
+}
+send " "
+expect {
+  -re {score 0*[1-9]} { pass "the space bar starts the game" }
+  timeout { fail "the game ignored the space bar" }
+}
+for {set i 0} {$i < 8} {incr i} {
+  expect -timeout 1 "never-matches-this" {}
+  send " "
+}
+expect {
+  "Your results are ready" { pass "says the results are ready" }
+  timeout { fail "no results prompt" }
+}
+send "\r"
+expect {
+  "Press a key:" { pass "shows the menu after the results" }
+  timeout { fail "no menu" }
+}
+send "c"
+expect {
+  "check/card/#v=1" { pass "builds the share card link" }
+  timeout { fail "no share card link" }
+}
+expect {
+  "Press a key:" {}
+  timeout { fail "no menu after the card" }
+}
+send "s"
+expect {
+  "Saved" { pass "saves the report" }
+  timeout { fail "did not save" }
+}
+expect {
+  "Press a key:" {}
+  timeout { fail "no menu after saving" }
+}
+send "q"
+expect {
+  eof { pass "quits cleanly" }
+  timeout { fail "did not quit" }
+}

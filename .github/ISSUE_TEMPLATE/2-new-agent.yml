@@ -1,0 +1,22 @@
+name: New agent
+description: Ask Blindspot to recognise another AI coding agent
+title: "Agent: "
+labels: ["new agent"]
+body:
+  - type: input
+    id: name
+    attributes:
+      label: Agent
+      description: Its name and website.
+    validations:
+      required: true
+  - type: textarea
+    id: install
+    attributes:
+      label: How it installs
+      description: The command it adds to PATH, or the app it puts in /Applications.
+  - type: textarea
+    id: paths
+    attributes:
+      label: Where it keeps things
+      description: Config files, MCP config, session history, and any file where it stores keys.

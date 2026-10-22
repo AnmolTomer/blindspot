@@ -1,0 +1,3 @@
+# Reports saved with --save or the menu hold your findings. Keep them out of git.
+gird-ai-key-check-*.txt
+.DS_Store

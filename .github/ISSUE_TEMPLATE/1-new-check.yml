@@ -1,0 +1,29 @@
+name: New check
+description: Ask for a check for a new leak, a compromised package or a risky setting
+title: "Check: "
+labels: ["new check"]
+body:
+  - type: input
+    id: what
+    attributes:
+      label: What happened
+      description: The incident or risk, in one line.
+    validations:
+      required: true
+  - type: textarea
+    id: sources
+    attributes:
+      label: Sources
+      description: Links to the vendor advisory or a trusted write-up.
+    validations:
+      required: true
+  - type: textarea
+    id: signs
+    attributes:
+      label: What to look for on disk
+      description: Files, versions, folders or markers that show someone is affected. The script never runs the software it checks.
+  - type: textarea
+    id: fix
+    attributes:
+      label: What people should do
+      description: What to rotate, remove or update.
