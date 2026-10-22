@@ -1,12 +1,11 @@
 <p align="center">
-  <img src="docs/report.png" alt="A Blindspot report in a terminal: the GIRD banner, a grade, and the coding agents, MCP servers and plain-text keys it found" width="760">
+  <a href="docs/report-full.png"><img src="docs/report.png" alt="A Blindspot report in a terminal: the GIRD banner, a grade, and the coding agents, MCP servers and plain-text keys it found" width="760"></a>
 </p>
 
 # Blindspot
 
 **See the AI keys and agents you can't.** A free, read-only check for your Mac, from [GIRD](https://gird.ai).
 
-[![ci](https://github.com/aegis-mesh/blindspot/actions/workflows/ci.yml/badge.svg)](https://github.com/aegis-mesh/blindspot/actions/workflows/ci.yml)
 [![license](https://img.shields.io/badge/license-Apache--2.0-0D9488)](LICENSE)
 
 Coding agents run with your access: your shell, your repos and the keys in your home folder. In October 2026, OpenCode, Railway and LiteLLM all leaked developer keys. Blindspot shows where your AI keys sit in plain text, which coding agents could read them, and whether that week's leaks touched you. It never prints a key.

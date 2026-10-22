@@ -36,7 +36,7 @@ bash tests/interactive.sh    # macOS: drives the game and the menu with expect
 shellcheck -s bash -S warning gird-check.sh tests/*.sh
 ```
 
-CI runs all of this on macOS with bash 3.2 and on Linux with bash 5.
+Run all three before you open a pull request. `tests/run.sh` and `tests/interactive.sh` each run on the bash that ships with macOS (3.2) and on a newer bash from your PATH if you have one. Maintainers run them again before merging.
 
 ## Sign your commits
 
