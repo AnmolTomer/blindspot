@@ -71,7 +71,7 @@ echo "Windows: Git Bash, MSYS, Cygwin"
 # installed on this machine. Git Bash's HOME is a different folder here, as on Cygwin.
 WR=$WORK/win; WP=$WR/Users/me; WB=$WORK/winbin
 mkdir -p "$WB" "$WR/Temp" "$WR/msyshome"
-K_ANT=$(sed -n 1p "$WORK/keys.txt"); K_GH=$(sed -n 3p "$WORK/keys.txt"); K_AWS=$(sed -n 4p "$WORK/keys.txt"); K_GROQ=$(sed -n 5p "$WORK/keys.txt")
+K_ANT=$(sed -n 1p "$WORK/keys.txt"); K_AWS=$(sed -n 4p "$WORK/keys.txt"); K_GROQ=$(sed -n 5p "$WORK/keys.txt")
 mkdir -p "$WP/.claude/projects/p" "$WP/AppData/Roaming/Claude" "$WP/AppData/Roaming/Code/User" "$WP/AppData/Local/Programs/cursor" \
   "$WP/AppData/Roaming/Block/goose/config" "$WP/AppData/Roaming/Microsoft/Windows/PowerShell/PSReadLine" \
   "$WP/AppData/Roaming/GitHub CLI" "$WP/AppData/Local/Programs/Python/Python312/Lib/site-packages" \
@@ -190,12 +190,23 @@ sed 's/\[ "\$N_IDLE" -gt 0 \]/[ 0 -gt 1 ]/g' "$SCRIPT" > "$WORK/no-idle.sh"
 rm -rf "$WORK/ni-empty"; mkdir -p "$WORK/ni-empty"
 HOME="$WORK/ni-empty" PATH=/usr/bin:/bin bash "$WORK/no-idle.sh" --offline 2>&1 | tr -s ' \n' '  ' > "$WORK/ni-empty.txt"
 has    "nothing found: the header says no findings"        'NO FINDINGS IN THIS SCAN' "$WORK/ni-empty.txt"
-has    "nothing found: it says this is not a guarantee"    'not a .*guarantee' "$WORK/ni-empty.txt"
+# The closing paragraph comes with the Argus for Mac pitch, so only macOS shows it;
+# other systems keep the plain no-guarantee line and the count in the header.
+if [ "$(uname -s)" = Darwin ]; then
+  has  "nothing found: it says this is not a guarantee"    'not a .*guarantee' "$WORK/ni-empty.txt"
+else
+  has  "nothing found: it says this is not a guarantee"    'does not prove nothing leaked' "$WORK/ni-empty.txt"
+fi
 hasnot "nothing found: no old clean-today wording"         'CLEAN TODAY|needs fixing|Nothing to fix' "$WORK/ni-empty.txt"
 rm -rf "$WORK/ni-pyc"; mkdir -p "$WORK/ni-pyc/code/py/.venv/lib/python3.12/site-packages/__pycache__"; : > "$WORK/ni-pyc/code/py/.venv/lib/python3.12/site-packages/__pycache__/cook.cpython-312.pyc"
 HOME="$WORK/ni-pyc" PATH=/usr/bin:/bin bash "$WORK/no-idle.sh" --offline 2>&1 | tr -s ' \n' '  ' > "$WORK/ni-pyc.txt"
-has    "a pyc-only run counts its things to fix"           'It found [0-9]+ things?.*to fix' "$WORK/ni-pyc.txt"
-has    "a pyc-only run still says the scan is a snapshot"  'THIS SCAN IS A SNAPSHOT' "$WORK/ni-pyc.txt"
+if [ "$(uname -s)" = Darwin ]; then
+  has  "a pyc-only run counts its things to fix"           'It found [0-9]+ things?.*to fix' "$WORK/ni-pyc.txt"
+  has  "a pyc-only run still says the scan is a snapshot"  'THIS SCAN IS A SNAPSHOT' "$WORK/ni-pyc.txt"
+else
+  has  "a pyc-only run counts its things to fix"           '[0-9]+ THINGS? TO FIX' "$WORK/ni-pyc.txt"
+  has  "a pyc-only run keeps the no-guarantee line"        'does not prove nothing leaked' "$WORK/ni-pyc.txt"
+fi
 hasnot "a pyc-only run is not told there are no findings"  'NO FINDINGS IN THIS SCAN' "$WORK/ni-pyc.txt"
 has    "cook.pth next to the pyc is an act-now hit" 'signs of the LiteLLM malware\. Act now' "$WORK/zb-pyc-strong.txt"
 
@@ -256,7 +267,7 @@ has    "--full lists every key file"           '~/\.zsh_history +GitHub' "$WORK/
 echo "hostile file names"
 EVIL="$WORK/home/code/evil$(printf '\033[2J\033]0;pwned\007\302\233')31m"
 mkdir -p "$EVIL"
-printf 'AWS_ACCESS_KEY_ID=AK%s\n' "IA$(LC_ALL=C tr -dc 'A-Z0-9' </dev/urandom | head -c 16)" > "$EVIL/.env"
+printf 'AWS_ACCESS_KEY_ID=AK%s\n' "IA$(head -c 4096 /dev/urandom | LC_ALL=C tr -dc 'A-Z0-9' | head -c 16)" > "$EVIL/.env"
 HOME="$WORK/home" bash "$SCRIPT" --offline > "$WORK/evil.txt" 2>&1
 if LC_ALL=C grep -aq "$(printf '\033')\|$(printf '\007')\|$(printf '\302\233')" "$WORK/evil.txt"; then bad "control characters in file names never reach the terminal"; else ok "control characters in file names never reach the terminal"; fi
 has "the hostile folder is still reported" 'code/evil\?' "$WORK/evil.txt"
@@ -485,7 +496,7 @@ PY
   if grep -aqF -f "$WORK/keys-places.txt" "$WORK/received.log"; then bad "no report holds the extra planted keys"; else ok "no report holds the extra planted keys"; fi
   # After the checks above: the Windows run has a GitHub CLI login, so its report says "gh".
   GIRD_CHECK_API="$API" report_of "$WORK/report-win.json" winrun
-  GIRD_CHECK_API="$API" FAKE_BUILD= FAKE_UNAME=MINGW64_NT-10.0-19045 report_of "$WORK/report-win10.json" winrun
+  GIRD_CHECK_API="$API" FAKE_BUILD='' FAKE_UNAME=MINGW64_NT-10.0-19045 report_of "$WORK/report-win10.json" winrun
   report_of "$WORK/report-wsl.json" env HOME="$WORK/home" FAKE_UNAME=Linux GIRD_CHECK_PROC="$WORK/proc-wsl" GIRD_CHECK_API="$API" PATH="$WB:/usr/bin:/bin" bash "$SCRIPT"
   WANT_ID=$(printf 'gird-check-v1:%s' "$GUID" | shasum -a 256 | cut -c1-64)
   has    "Windows: os is Windows 11 for build 22000 and up" '"os":"Windows 11"' "$WORK/report-win.json"
