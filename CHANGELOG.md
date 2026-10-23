@@ -2,9 +2,12 @@
 
 ## Unreleased
 
+- Wording: the report and the result page say "AI builders" where they said "developers", "Better than" where they said "Safer than", the early-rank label is "AI builder", and a result with nothing in it reads "No findings in this scan" with a note that it is not a guarantee. What used to be called the certificate is now your "AI Exposure Check": the prompt, the result link and the image say so, and the image no longer says it was verified.
+- Every device gets its number, not only the first 1,000: "You're AI builder #1,234 to run Blindspot." Up to 1,000 it adds "One of the first 1,000."
+- A leftover `cook.pyc` alone is now a "possible leftover" to check, not an act-now hit. `cook.pth`, `cook.py`, the 1.107.0 install record, the marker files or a running loader still are.
 - The spend-limit tip is a plain line under "What to do", no longer a numbered item, so the list matches the "things to fix" count in the header.
 - MCP servers found inside plugin folders and caches (Codex's `.tmp/plugins`, Claude's `plugins` folder) are counted apart, such as "9 servers, 50 more in plugin folders", and shown as one line in the details. They no longer inflate the server count, and they are left out of the counts the script shares. A token written into one of those files is still flagged.
-- Zeabur joins OpenCode and Railway in the check for this week's leaks: if the Zeabur CLI or its settings folder is on your Mac, it says to rotate the keys stored there. A leftover compiled `cook` file from the LiteLLM malware now counts as a sign of it, even after `cook.py` was deleted.
+- Zeabur joins OpenCode and Railway in the check for this week's leaks: if the Zeabur CLI or its settings folder is on your Mac, it says to rotate the keys stored there. A leftover compiled `cook` file from the LiteLLM malware, which stays behind after `cook.py` is deleted, is reported as a possible leftover to check.
 - Your number among the first 1,000 now sits on its own line above your result, not inside it, and is the only line that mentions the first 1,000. Until 1,000 developers have run it, the line under the banner is left out.
 - A scan that finishes within about two seconds goes straight to the results. The game only appears when the scan is still running after that, instead of flashing up for a moment.
 - The advice for keys in plain text names the place to keep them for your system: the macOS Keychain on a Mac, GNOME Keyring or KWallet on Linux, Windows Credential Manager under Git Bash, MSYS or Cygwin, and a secrets manager anywhere else.
