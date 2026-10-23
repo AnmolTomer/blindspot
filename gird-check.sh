@@ -193,7 +193,8 @@ EOF
 }
 # One line of real, public totals under the banner, picked at random from the
 # ones big enough to mean something. Nothing when they don't arrive in time.
-# Below 1,000 developers it says you're one of the first 1,000 instead.
+# Below 1,000 developers it shows nothing: the header says you're one of the
+# first 1,000 instead, with your number once the reply brings it.
 proof_line() {
   [ -n "$SP_PID" ] || return 0
   wait "$SP_PID" 2>/dev/null; SP_PID=""
@@ -201,17 +202,14 @@ proof_line() {
   _dv=$(jnum devices "$_pj"); _d7=$(jnum devices_7d "$_pj"); _kf=$(jnum key_files "$_pj")
   _cl=$(printf '%s' "$_pj" | grep -oE '"clean":(0(\.[0-9]{1,6})?|1(\.0{1,6})?)([,}]|$)' | head -n 1 | sed -E 's/"clean":([0-9.]+).*/\1/')
   [ -n "$_dv" ] || return 0
+  if [ "$_dv" -lt 1000 ]; then EARLY=1; return 0; fi
   _pm=()
-  if [ "$_dv" -lt 1000 ]; then
-    _pm[0]="You're one of the first 1,000 developers to run Blindspot."
-  else
-    _pm[0]="$(commas "$_dv") developers have run Blindspot."
-    if [ -n "$_d7" ] && [ "$_d7" -ge 50 ]; then _pm[${#_pm[@]}]="$(commas "$_d7") developers ran it this week."; fi
-    if [ -n "$_kf" ] && [ "$_kf" -ge 100 ]; then _pm[${#_pm[@]}]="Blindspot has found $(commas "$_kf") files with AI keys in plain text so far."; fi
-    if [ -n "$_cl" ]; then
-      _cp=$(awk -v c="$_cl" 'BEGIN { printf "%d", c * 100 + 0.5 }')
-      if [ "$_cp" -ge 1 ] && [ "$_cp" -le 99 ]; then _pm[${#_pm[@]}]="$_cp% of developers had no keys in plain text. Let's see about you."; fi
-    fi
+  _pm[0]="$(commas "$_dv") developers have run Blindspot."
+  if [ -n "$_d7" ] && [ "$_d7" -ge 50 ]; then _pm[${#_pm[@]}]="$(commas "$_d7") developers ran it this week."; fi
+  if [ -n "$_kf" ] && [ "$_kf" -ge 100 ]; then _pm[${#_pm[@]}]="Blindspot has found $(commas "$_kf") files with AI keys in plain text so far."; fi
+  if [ -n "$_cl" ]; then
+    _cp=$(awk -v c="$_cl" 'BEGIN { printf "%d", c * 100 + 0.5 }')
+    if [ "$_cp" -ge 1 ] && [ "$_cp" -le 99 ]; then _pm[${#_pm[@]}]="$_cp% of developers had no keys in plain text. Let's see about you."; fi
   fi
   printf '\n  %s★%s %s%s%s\n' "$GOLD" "$RST" "$B" "${_pm[$((RANDOM % ${#_pm[@]}))]}" "$RST"
 }
@@ -246,7 +244,7 @@ spin_stop() {
 # ---------------------------------------------------------------------------
 # GIRD Runner, a small game for the wait. It runs in a background process while
 # the scan runs in the foreground. When the scan is done the game gets USR1 and
-# asks whether to show the results. Its exit code says whether it was played
+# asks whether to show the results, or just leaves if it hasn't been drawn yet. Its exit code says whether it was played
 # and roughly the best score. How it keeps time depends on the bash running it:
 #   A  bash 5+   reads keys with timeouts against the microsecond clock
 #   B  bash 4    reads keys with a frame-long timeout
@@ -479,9 +477,12 @@ g_step() { # returns 1 when the game should end
 g_end() {
   [ -n "$G_DONE" ] && return 0
   G_DONE=1
-  _o="${E}[${G_H}A"; _i=0
-  while [ "$_i" -lt "$G_H" ]; do _o="$_o$CR${E}[K$NL"; _i=$((_i + 1)); done
-  printf '%s%s' "$_o" "${E}[${G_H}A"
+  if [ "$G_HOLDING" -eq 1 ]; then printf '%s' "$CR${E}[K"   # the game's rows are not drawn yet
+  else
+    _o="${E}[${G_H}A"; _i=0
+    while [ "$_i" -lt "$G_H" ]; do _o="$_o$CR${E}[K$NL"; _i=$((_i + 1)); done
+    printf '%s%s' "$_o" "${E}[${G_H}A"
+  fi
   [ "$G_MODE" = C ] || stty "$G_SAVED" 2>/dev/null || stty sane 2>/dev/null
   printf '%s' "$SHOW"
 }
@@ -493,7 +494,7 @@ game_loop() {
     trap '[ -z "$G_SIG" ] && G_SIG=jump' USR2
     trap 'G_SIG=enter' ALRM; trap 'G_SIG=cont' VTALRM; trap 'G_SIG=quit' PROF
   fi
-  G_READY=0; G_PLAYED=0; G_STATE=idle; G_BEST=0; G_F=0; G_REMIND=0; G_SINCE=0; G_DONE=""
+  G_READY=0; G_HOLDING=1; G_PLAYED=0; G_STATE=idle; G_BEST=0; G_F=0; G_REMIND=0; G_SINCE=0; G_DONE=""
   G_W=$((W - 6)); [ "$G_W" -gt 72 ] && G_W=72
   G_PX=6; G_H=10; G_TICK=""
   G_TOKS=("sk-ant" "AKIA" "ghp_" ".env" "sk-" "npm_" "xai-")
@@ -511,6 +512,19 @@ game_loop() {
   # the main script has already set it up and will put it back.
   if [ "$G_MODE" != C ]; then G_SAVED=$(stty -g 2>/dev/null); stty -echo -icanon -icrnl min 0 time 0 2>/dev/null; fi
   printf '%s' "$HIDE"
+  # A fast scan never shows the game: it waits out G_HOLD seconds behind a one-line
+  # spinner, and leaves without drawing if the results are ready first.
+  G_HOLD=2; _hi=0
+  while [ "$G_READY" -eq 0 ] && [ $((SECONDS - G_T0)) -le "$G_HOLD" ]; do
+    printf '%s  %s%s%s  %sChecking your agents, configs and keys%s' "$CR${E}[K" "$TEAL" "${G_SPIN:$(( (_hi % 10) * 3 )):3}" "$RST" "$DIM" "$RST"
+    _hi=$((_hi + 1)); sleep 0.1
+  done
+  printf '%s' "$CR${E}[K"
+  if [ "$G_READY" -eq 1 ]; then
+    [ "$G_MODE" = C ] || stty "$G_SAVED" 2>/dev/null || stty sane 2>/dev/null
+    printf '%s' "$SHOW"; exit 0
+  fi
+  G_HOLDING=0
   _i=0; while [ "$_i" -lt "$G_H" ]; do printf '\n'; _i=$((_i + 1)); done
   while :; do
     g_wait
@@ -546,7 +560,7 @@ drain_keys() {
   stty "$_rs" </dev/tty 2>/dev/null
 }
 
-PROG_FILE=""; SP_FILE=""; SP_PID=""
+PROG_FILE=""; SP_FILE=""; SP_PID=""; EARLY=0
 cleanup() {
   spin_stop
   if [ -n "$SP_PID" ]; then kill "$SP_PID" 2>/dev/null; wait "$SP_PID" 2>/dev/null; SP_PID=""; fi
@@ -1155,7 +1169,13 @@ todo() { # section text
   esac
 }
 [ "$LITELLM_HIT" -eq 1 ] && todo 5 "Treat this machine as compromised. Don't run Python in the affected environments, follow LiteLLM's advisory, and rotate every key the machine could reach."
-[ "$KEY_FILES" -gt 0 ] && todo 3 "Move keys out of shell profiles, history and .env files into the macOS Keychain or a secrets manager, then rotate them."
+case "$OS" in
+  Darwin) _store="the macOS Keychain or a secrets manager" ;;
+  Linux)  _store="your desktop keyring (GNOME Keyring or KWallet) or a secrets manager" ;;
+  MINGW*|MSYS*|CYGWIN*) _store="Windows Credential Manager or a secrets manager" ;;
+  *)      _store="a secrets manager" ;;
+esac
+[ "$KEY_FILES" -gt 0 ] && todo 3 "Move keys out of shell profiles, history and .env files into $_store, then rotate them."
 [ "$HIST_KEYS" -gt 0 ] && todo 3 "Keys in shell history were typed into a command. Treat them as exposed and rotate them."
 [ "$N_MCP_TOKEN" -gt 0 ] && todo 2 "Replace tokens written into MCP configs with environment variable references, then rotate them."
 [ "$N_ALLOW" -gt 0 ] && todo 4 "Delete the saved Claude Code commands that contain keys, add .claude/ to .npmignore, and rotate those keys."
@@ -1297,6 +1317,12 @@ PCT_TXT=""; [ -n "$PCT" ] && PCT_TXT="Safer than $PCT% of $(commas "$PCT_N") dev
 STATS="$(plural "$N_AG" "coding agent" "coding agents"), $N_IDLE not used in 30 days, $(plural "$N_MCP" "MCP server" "MCP servers"), $(plural "$KEY_FILES" "file" "files") with keys in plain text, $(plural "$N_ALLOW" "key" "keys") in allow lists"
 upper() { printf '%s' "$1" | tr 'a-z' 'A-Z'; }
 CAPTURE=1; CAP=""
+# The first 1,000 get their place in line, above either header.
+if [ -n "$RANK" ]; then
+  wrap "You're developer #$(commas "$RANK") to run Blindspot. One of the first 1,000." 4 "  ${GOLD}★${RST} " "    " "$B"; blank
+elif [ "$EARLY" -eq 1 ]; then
+  wrap "You're one of the first 1,000 developers to run Blindspot." 4 "  ${GOLD}★${RST} " "    " "$B"; blank
+fi
 if [ "$LITELLM_HIT" -eq 1 ]; then
   emit "  ${SEV}▌${RST} ${B}ACT NOW: SIGNS OF THE LITELLM 1.107.0 MALWARE${RST}"
   if [ -n "$PCT_TXT" ]; then emit "  ${SEV}▌${RST} ${B}${PCT_TXT}.${RST} ${FIXN}."; else emit "  ${SEV}▌${RST} ${FIXN}."; fi
@@ -1309,11 +1335,6 @@ fi
 HEAD_SHORT=$CAP; CAP=""
 wrap "$STATS" 4 "  ${SEV}▌${RST} " "  ${SEV}▌${RST} " "$DIM"
 HEAD_FULL="$HEAD_SHORT$CAP"; CAP=""
-# The first 1,000 get their place in line, as the last line of either header.
-if [ -n "$RANK" ]; then
-  wrap "You're developer #$(commas "$RANK") to run Blindspot. One of the first 1,000." 6 "  ${SEV}▌${RST} ${GOLD}★${RST} " "  ${SEV}▌${RST}   " "$B"
-  HEAD_SHORT="$HEAD_SHORT$CAP"; HEAD_FULL="$HEAD_FULL$CAP"; CAP=""
-fi
 
 section 01 "CODING AGENTS" "$N_AG found, $N_IDLE idle"
 if [ "$N_AG" -eq 0 ]; then emit "     No coding agents found."; fi
