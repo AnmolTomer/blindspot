@@ -99,6 +99,17 @@ has    "the offline link has key counts, no run ID or rank" 'blindspot/card/#v=2
 nokeys "never prints a planted key" "$WORK/keys.txt" "$OUT"
 if LC_ALL=C grep -aq "$(printf '\033')" "$OUT"; then bad "redirected output has no escape codes"; else ok "redirected output has no escape codes"; fi
 
+mkdir -p "$WORK/codex/.codex/sessions/2026/10/26"
+for ext in jsonl jsonl.zst; do
+  session="$WORK/codex/.codex/sessions/2026/10/26/rollout-recent.$ext"
+  touch "$session"
+  psrun "$WORK/codex" -- -Offline > "$WORK/codex.txt" 2>&1
+  has "Codex with a recent YYYY/MM/DD $ext session is active" 'Codex +used in the last 30 days' "$WORK/codex.txt"
+  rm "$session"
+done
+psrun "$WORK/codex" -- -Offline > "$WORK/codex.txt" 2>&1
+has "Codex with empty session directories is unused" 'Codex +installed, no use recorded' "$WORK/codex.txt"
+
 echo "the same findings as gird-check.sh"
 # gird-check.sh, on the same home with its Mac paths, must find the same files.
 bash tests/make-fixture.sh "$WORK/bhome" "$WORK/keys-b.txt" >/dev/null

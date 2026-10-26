@@ -50,6 +50,17 @@ for B in $BASHES; do
   has    "the offline link has key counts, no run ID or rank" 'blindspot/card/#v=2&.*&u=&r=&sk=2&hk=1&ag=[a-z0-9.-]*$' "$OUT"
   if grep -aqF -f "$WORK/keys.txt" "$OUT"; then bad "never prints a planted key"; else ok "never prints a planted key"; fi
   if LC_ALL=C grep -aq "$(printf '\033')" "$OUT"; then bad "plain output has no escape codes"; else ok "plain output has no escape codes"; fi
+
+  mkdir -p "$WORK/codex-$V/.codex/sessions/2026/10/26"
+  for ext in jsonl jsonl.zst; do
+    session="$WORK/codex-$V/.codex/sessions/2026/10/26/rollout-recent.$ext"
+    touch "$session"
+    HOME="$WORK/codex-$V" "$B" "$SCRIPT" --offline > "$WORK/codex-$V.txt" 2>&1
+    has "Codex with a recent YYYY/MM/DD $ext session is active" 'Codex +used in the last 30 days' "$WORK/codex-$V.txt"
+    rm "$session"
+  done
+  HOME="$WORK/codex-$V" "$B" "$SCRIPT" --offline > "$WORK/codex-$V.txt" 2>&1
+  has "Codex with empty session directories is unused" 'Codex +installed, no use recorded' "$WORK/codex-$V.txt"
 done
 
 echo "advice by OS"

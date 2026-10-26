@@ -910,8 +910,9 @@ while IFS='|' read -r name bins paths acts aid; do
     any=0; recent=0; IFS=';'
     for a in $acts; do
       [ -d "$a" ] || continue
-      [ -n "$(find "$a" -maxdepth 3 -type f -print -quit 2>/dev/null)" ] && any=1
-      [ -n "$(find "$a" -maxdepth 3 -type f -mtime -30 -print -quit 2>/dev/null)" ] && recent=1
+      # Codex sessions live at YYYY/MM/DD/rollout-*.jsonl[.zst], four levels down.
+      [ -n "$(find "$a" -maxdepth 4 -type f -print -quit 2>/dev/null)" ] && any=1
+      [ -n "$(find "$a" -maxdepth 4 -type f -mtime -30 -print -quit 2>/dev/null)" ] && recent=1
     done
     IFS=$old_ifs
     if [ "$recent" -eq 1 ]; then state=active
